@@ -1,0 +1,20 @@
+[
+  {
+    "name": "prod-dc1",
+    "api": "https://api.sys.dc1.example.com",
+    "username": "svc-spring-audit",
+    "skip_ssl": false
+  },
+  {
+    "name": "prod-dc2",
+    "api": "https://api.sys.dc2.example.com",
+    "username": "svc-spring-audit",
+    "skip_ssl": false
+  },
+  {
+    "name": "nonprod",
+    "api": "https://api.sys.np.example.com",
+    "username": "svc-spring-audit",
+    "skip_ssl": true
+  }
+]

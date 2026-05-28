@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spring App Detector — Documentation</title>
+<style>
+:root{
+  --green:#6db33f; --green-d:#4e8a2b; --green-dd:#2f6b1f;
+  --ink:#1f2933; --muted:#5b6770; --bg:#f4f6f8; --card:#fff; --line:#e3e8ee;
+  --code-bg:#0f1722; --code-ink:#e6edf3; --code-line:#243042;
+  --note-bg:#eef7e6; --note-bd:#6db33f; --warn-bg:#fff7e6; --warn-bd:#e0b341;
+  --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ink:#e6edf3; --muted:#9aa7b2; --bg:#0f1419; --card:#161c23; --line:#263039;
+    --code-bg:#0b1118; --code-ink:#e6edf3; --code-line:#1f2a36;
+    --note-bg:#16241a; --warn-bg:#241f12; --shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);background:var(--bg);
+  font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;}
+a{color:var(--green-d)}
+@media (prefers-color-scheme:dark){a{color:var(--green)}}
+
+.hero{background:linear-gradient(135deg,#6db33f 0%,#4e8a2b 60%,#2f6b1f 100%);
+  color:#fff;padding:34px 24px;box-shadow:var(--shadow);}
+.hero-inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:16px;}
+.hero .leaf{font-size:46px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25));}
+.hero h1{margin:0;font-size:27px;font-weight:800;letter-spacing:.2px;}
+.hero .sub{margin:6px 0 0;opacity:.94;font-size:14px;}
+
+.wrap{max-width:1080px;margin:0 auto;padding:28px 24px 64px;
+  display:grid;grid-template-columns:220px 1fr;gap:36px;align-items:start;}
+@media (max-width:820px){.wrap{grid-template-columns:1fr;gap:20px}.toc{display:none}}
+
+.toc{position:sticky;top:18px;font-size:14px;}
+.toc h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 10px;}
+.toc a{display:block;padding:5px 10px;border-radius:7px;color:var(--muted);text-decoration:none;border-left:2px solid transparent;}
+.toc a:hover{color:var(--green-d);background:rgba(109,179,63,.08);border-left-color:var(--green);}
+
+.content{min-width:0}
+.content h2{font-size:22px;font-weight:750;margin:38px 0 12px;padding-bottom:7px;border-bottom:2px solid var(--line);scroll-margin-top:18px;}
+.content h2:first-child{margin-top:0}
+.content h3{font-size:16px;font-weight:700;margin:24px 0 8px;color:var(--green-dd);}
+@media (prefers-color-scheme:dark){.content h3{color:var(--green)}}
+.content p{margin:12px 0}
+.content ul{margin:12px 0;padding-left:22px}
+.content li{margin:6px 0}
+.lead{font-size:17px;color:var(--ink)}
+
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86em;
+  background:rgba(109,179,63,.13);color:inherit;padding:2px 6px;border-radius:5px;}
+pre{background:var(--code-bg);color:var(--code-ink);border:1px solid var(--code-line);
+  border-radius:11px;padding:16px 18px;overflow:auto;box-shadow:var(--shadow);margin:14px 0;line-height:1.55;}
+pre code{background:none;color:inherit;padding:0;font-size:13.5px;}
+pre .c{color:#7d8a99}        /* comments */
+pre .k{color:#8fd06a}        /* commands / keys */
+
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14.5px;
+  background:var(--card);border:1px solid var(--line);border-radius:11px;overflow:hidden;box-shadow:var(--shadow);}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+th{background:rgba(109,179,63,.08);color:var(--muted);font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;}
+tr:last-child td{border-bottom:none}
+td code{white-space:nowrap}
+
+.badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;}
+.b-conf{background:var(--green);color:#fff;}
+.b-likely{background:transparent;color:#b7791f;border:1px solid #e0b341;}
+@media (prefers-color-scheme:dark){.b-likely{color:#e0b341}}
+
+.callout{border-left:4px solid var(--note-bd);background:var(--note-bg);
+  padding:13px 16px;border-radius:0 9px 9px 0;margin:16px 0;}
+.callout.warn{border-left-color:var(--warn-bd);background:var(--warn-bg);}
+.callout .t{font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;
+  color:var(--green-dd);}
+.callout.warn .t{color:#a9791a}
+@media (prefers-color-scheme:dark){.callout .t{color:var(--green)}.callout.warn .t{color:#e0b341}}
+.callout p{margin:4px 0}
+
+footer{max-width:1080px;margin:0 auto;padding:0 24px 50px;color:var(--muted);font-size:13px;}
+hr{border:none;border-top:1px solid var(--line);margin:30px 0}
+</style>
+</head>
+<body>
+<header class="hero"><div class="hero-inner">
+  <div class="leaf">&#127793;</div>
+  <div>
+    <h1>Spring App Detector for Tanzu Cloud Foundry</h1>
+    <p class="sub">Inventory Spring apps across one or many TAS foundations &middot; <code>detect-spring-apps.sh</code></p>
+  </div>
+</div></header>
+
+<div class="wrap">
+  <nav class="toc">
+    <h2>Contents</h2>
+    <a href="#overview">Overview</a>
+    <a href="#detection">How detection works</a>
+    <a href="#requirements">Requirements</a>
+    <a href="#usage">Usage</a>
+    <a href="#auth">Authentication &amp; config</a>
+    <a href="#options">Options</a>
+    <a href="#columns">Output columns</a>
+    <a href="#caveats">Caveats</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+  </nav>
+
+  <main class="content">
+    <section id="overview">
+      <h2>Overview</h2>
+      <p class="lead"><code>detect-spring-apps.sh</code> inventories the <strong>Spring applications</strong>
+      running on one or many Tanzu Cloud Foundry (Tanzu Application Service / PCF) foundations and
+      reports them three ways:</p>
+      <ul>
+        <li>a clean <strong>terminal table</strong>,</li>
+        <li>a <strong>CSV</strong> file (for spreadsheets / diffing across runs), and</li>
+        <li>a self-contained, interactive <strong>HTML report</strong> (search / sort / filter, no external dependencies).</li>
+      </ul>
+      <p>It talks to the <strong>Cloud Controller v3 API</strong> via <code>cf curl</code>, so it works
+      against any foundation you can <code>cf login</code> to — no Tanzu Hub or Apps Manager access required.</p>
+    </section>
+
+    <section id="detection">
+      <h2>How detection works</h2>
+      <table>
+        <thead><tr><th>Confidence</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="badge b-likely">LIKELY</span><br><small>(default)</small></td>
+            <td>The app's <strong>detected buildpack</strong> (read from its current droplet) is the
+              <strong>Java buildpack</strong>. This is the practical ~95% filter for Spring on TAS — fast,
+              needs no network access to the apps, and covers apps with no route and stopped apps.</td>
+          </tr>
+          <tr>
+            <td><span class="badge b-conf">CONFIRMED</span><br><small>(<code>--probe</code>)</small></td>
+            <td>In addition, the app's route responded at <strong><code>/cloudfoundryapplication</code></strong>
+              with <code>200/401/403</code>. The Java buildpack maps Spring Boot Actuator to this protected
+              path, so a response proves the app is Spring Boot from the inside out.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Platform/system apps are excluded <strong>by org name</strong> (default: <code>system</code>,
+      <code>p-spring-cloud-services</code>, <code>p-dataflow</code>). Note that Spring Cloud Services
+      components (config-server, eureka, …) <em>are</em> Spring Boot but are platform infrastructure, so they
+      live in <code>p-spring-cloud-services</code> and are excluded by default. Most other TAS platform
+      components are BOSH VMs, not CF apps, so they never appear here. Override with
+      <code>--exclude-orgs</code> or <code>--include-system</code>.</p>
+    </section>
+
+    <section id="requirements">
+      <h2>Requirements</h2>
+      <ul>
+        <li><a href="https://github.com/cloudfoundry/cli"><code>cf</code> CLI</a> v8+ (uses the v3 API)</li>
+        <li><a href="https://jqlang.github.io/jq/"><code>jq</code></a> 1.6+</li>
+        <li><code>column</code> (optional — falls back to plain output) and <code>curl</code> (only needed for <code>--probe</code>)</li>
+      </ul>
+      <p>The script is written to run on <strong>stock macOS bash 3.2</strong> and Linux jump hosts.</p>
+    </section>
+
+    <section id="usage">
+      <h2>Usage</h2>
+
+      <h3>1. Against the foundation you're already logged into (zero config)</h3>
+<pre><code><span class="k">cf</span> login -a https://api.sys.dc1.example.com
+<span class="k">./detect-spring-apps.sh</span></code></pre>
+
+      <h3>2. Confirm with the actuator probe</h3>
+<pre><code><span class="k">./detect-spring-apps.sh</span> --probe</code></pre>
+      <div class="callout">
+        <div class="t">Note</div>
+        <p><code>--probe</code> requires the machine running the script to have <strong>network access to the
+        app routes</strong> (<code>*.apps.&lt;domain&gt;</code>). Apps without a route, or Spring apps without
+        the Actuator dependency, stay <code>LIKELY</code> (they are not missed — just not upgraded to
+        <code>CONFIRMED</code>).</p>
+      </div>
+
+      <h3>3. Sweep many foundations from a config file</h3>
+<pre><code><span class="k">cp</span> foundations.example.json foundations.json   <span class="c"># edit endpoints + usernames</span>
+<span class="k">export</span> CF_PASSWORD_PROD_DC1='...'
+<span class="k">export</span> CF_PASSWORD_PROD_DC2='...'
+<span class="k">export</span> CF_PASSWORD_NONPROD='...'
+<span class="k">./detect-spring-apps.sh</span> --config foundations.json --probe</code></pre>
+      <p>Results from all foundations are merged into one table / CSV / HTML, tagged with the foundation name.</p>
+
+      <h3>4. Ad-hoc single foundation</h3>
+<pre><code>CF_PASSWORD='...' <span class="k">./detect-spring-apps.sh</span> --api https://api.sys.dc1.example.com -u svc-spring-audit</code></pre>
+    </section>
+
+    <section id="auth">
+      <h2>Authentication &amp; the config file</h2>
+      <p><code>foundations.json</code> is a JSON array. Each entry:</p>
+<pre><code>{ <span class="k">"name"</span>: "prod-dc1", <span class="k">"api"</span>: "https://api.sys.dc1.example.com",
+  <span class="k">"username"</span>: "svc-spring-audit", <span class="k">"skip_ssl"</span>: false }</code></pre>
+      <p>Passwords are <strong>never</strong> stored in the file. For each foundation the script reads the env
+      var <code>CF_PASSWORD_&lt;NAME&gt;</code> — where <code>&lt;NAME&gt;</code> is the <code>name</code>
+      upper-cased with every non-alphanumeric character turned into <code>_</code> — and falls back to
+      <code>CF_PASSWORD</code>. Examples:</p>
+      <table>
+        <thead><tr><th>Foundation <code>name</code></th><th>Password env var</th></tr></thead>
+        <tbody>
+          <tr><td><code>prod-dc1</code></td><td><code>CF_PASSWORD_PROD_DC1</code></td></tr>
+          <tr><td><code>nonprod</code></td><td><code>CF_PASSWORD_NONPROD</code></td></tr>
+          <tr><td><code>eu.west</code></td><td><code>CF_PASSWORD_EU_WEST</code></td></tr>
+        </tbody>
+      </table>
+      <p>Each foundation is authenticated in an <strong>isolated <code>CF_HOME</code></strong>, so the script
+      never touches your real <code>~/.cf/config.json</code> and a failure on one foundation doesn't abort the rest.</p>
+      <div class="callout">
+        <div class="t">Use a read-only account</div>
+        <p>The script only issues <code>GET</code>s. A UAA user with <code>cloud_controller.read</code>
+        (e.g. an <code>admin_read_only</code> user, or an org/space <em>auditor</em>) is sufficient.</p>
+      </div>
+    </section>
+
+    <section id="options">
+      <h2>Options</h2>
+<pre><code>--config FILE        Sweep many foundations (JSON array; see above).
+--api URL            Ad-hoc single foundation API endpoint.
+-u, --user NAME      Username for --api (password via CF_PASSWORD or prompt).
+--skip-ssl           Skip TLS validation for --api.
+
+--probe              Confirm Spring Boot via /cloudfoundryapplication.
+--exclude-orgs LIST  Comma-separated org names to exclude
+                     (default: system,p-spring-cloud-services,p-dataflow).
+--include-system     Exclude nothing.
+--concurrency N      Parallel probe/route workers (default 8).
+--probe-timeout S    Per-probe timeout, seconds (default 5).
+
+--csv FILE / --no-csv      CSV output (default spring-apps-&lt;timestamp&gt;.csv).
+--html FILE / --no-html    HTML output (default spring-apps-&lt;timestamp&gt;.html).
+--no-table                 Suppress the terminal table.
+--debug                    Print per-foundation diagnostics (org/space/app
+                           counts, a sample current-droplet path, and the
+                           detected buildpack names) to stderr.
+-h, --help                 Help.</code></pre>
+      <p>Buildpack truth is read from each app's <strong>current droplet</strong>, fetched directly from the
+      app's <code>current_droplet</code> link (<code>/v3/apps/:guid/droplets/current</code>). That's one API
+      call per app, run in parallel (<code>--concurrency</code>, default 8). On very large foundations raise
+      it, e.g. <code>--concurrency 16</code>.</p>
+      <p>By default the terminal table, CSV, and HTML are <strong>all</strong> produced.</p>
+    </section>
+
+    <section id="columns">
+      <h2>Output columns</h2>
+      <p><code>Foundation</code> (only shown when more than one), <code>Org</code>, <code>Space</code>,
+      <code>App</code>, <code>Buildpack</code>, <code>Confidence</code>.</p>
+      <p>The HTML report adds summary cards (totals, confirmed vs likely, foundation/org/space counts), a live
+      search box, foundation/org/confidence filters, click-to-sort columns, and a “Download CSV” button that
+      exports the currently filtered view.</p>
+    </section>
+
+    <section id="caveats">
+      <h2>Caveats</h2>
+      <ul>
+        <li><strong>LIKELY vs CONFIRMED.</strong> Without <code>--probe</code>, "Spring" means "Java
+          buildpack". A plain (non-Spring) Java app would show as LIKELY; use <code>--probe</code> to separate
+          true Spring Boot apps.</li>
+        <li><strong>Unstaged apps.</strong> Apps that have never been staged have no current droplet, so their
+          buildpack is unknown; they are skipped and counted in the summary.</li>
+        <li><strong>WAR / non-Boot Spring.</strong> Buildpack detection captures these (Java buildpack), but
+          <code>--probe</code> only confirms apps exposing the Actuator at the route root.</li>
+        <li><strong>Context-path routes.</strong> <code>--probe</code> hits
+          <code>https://&lt;route&gt;/cloudfoundryapplication</code>; apps served under a non-root context path
+          may not confirm even though they are Spring.</li>
+      </ul>
+    </section>
+
+    <section id="troubleshooting">
+      <h2>Troubleshooting</h2>
+      <div class="callout warn">
+        <div class="t">“No Spring applications found” but you know there are Spring apps?</div>
+        <p>Re-run with <code>--debug</code>. The key line is <code>detected buildpacks: …</code> — it lists the
+        buildpack names the foundation actually reports. If you see Java buildpacks there but still get no
+        results, share that line. Also check <code>droplets resolved: N</code> is close to your app count; if
+        it's <code>0</code>, the script couldn't read the apps' current droplets (permissions or an
+        unstaged-only space).</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer>Generated documentation for <code>detect-spring-apps.sh</code>. Open this file in any browser — it is fully self-contained.</footer>
+</body>
+</html>
