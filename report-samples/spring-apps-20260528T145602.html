@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spring Applications Inventory</title>
+<style>
+:root{
+  --green:#6db33f; --green-d:#4e8a2b; --ink:#1f2933; --muted:#67727e;
+  --bg:#f4f6f8; --card:#fff; --line:#e3e8ee;
+  --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root{ --ink:#e6edf3; --muted:#9aa7b2; --bg:#0f1419; --card:#161c23; --line:#263039;
+         --shadow:0 1px 3px rgba(0,0,0,.4); }
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);background:var(--bg);
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+.hero{background:linear-gradient(135deg,#6db33f 0%,#4e8a2b 60%,#2f6b1f 100%);
+  color:#fff;padding:30px 24px;box-shadow:var(--shadow);}
+.hero-inner{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:16px;}
+.hero .leaf{font-size:44px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25));}
+.hero h1{margin:0;font-size:25px;font-weight:700;letter-spacing:.2px;}
+.hero .sub{margin:5px 0 0;opacity:.93;font-size:13px;}
+main{max-width:1240px;margin:0 auto;padding:24px;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:22px;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);}
+.card-val{font-size:30px;font-weight:700;line-height:1;color:var(--green-d);}
+@media (prefers-color-scheme:dark){.card-val{color:var(--green);}}
+.card-lbl{margin-top:6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;}
+.toolbar input,.toolbar select{padding:9px 12px;border:1px solid var(--line);border-radius:9px;
+  background:var(--card);color:var(--ink);font-size:14px;}
+.toolbar input{flex:1;min-width:220px;}
+.toolbar input:focus,.toolbar select:focus{outline:2px solid var(--green);outline-offset:0;border-color:var(--green);}
+#dl-csv{cursor:pointer;border:1px solid var(--green);background:var(--green);color:#fff;
+  font-weight:600;padding:9px 14px;border-radius:9px;}
+#dl-csv:hover{background:var(--green-d);}
+.count{color:var(--muted);font-size:13px;margin-left:auto;}
+.table-wrap{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  overflow:auto;box-shadow:var(--shadow);max-height:72vh;}
+table{border-collapse:collapse;width:100%;font-size:14px;}
+thead th{position:sticky;top:0;background:var(--card);text-align:left;padding:12px 14px;
+  border-bottom:2px solid var(--line);cursor:pointer;user-select:none;white-space:nowrap;
+  color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em;}
+thead th:hover{color:var(--green-d);}
+thead th.asc::after{content:" \25B2";font-size:10px;}
+thead th.desc::after{content:" \25BC";font-size:10px;}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--line);}
+tbody tr:nth-child(even){background:rgba(109,179,63,.045);}
+tbody tr:hover{background:rgba(109,179,63,.11);}
+.app-cell{font-weight:600;}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;}
+.b-conf{background:var(--green);color:#fff;}
+.b-likely{background:transparent;color:#b7791f;border:1px solid #e0b341;}
+@media (prefers-color-scheme:dark){.b-likely{color:#e0b341;}}
+.empty{padding:40px;text-align:center;color:var(--muted);}
+footer{margin-top:18px;color:var(--muted);font-size:12px;}
+footer code{background:var(--line);padding:1px 5px;border-radius:4px;}
+</style>
+</head>
+<body>
+<header class="hero"><div class="hero-inner">
+  <div class="leaf">&#127793;</div>
+  <div>
+    <h1>Spring Applications Inventory</h1>
+    <p class="sub">Tanzu Cloud Foundry &middot; generated <span id="generated"></span></p>
+  </div>
+</div></header>
+<main>
+  <section class="cards" id="cards"></section>
+  <section class="toolbar">
+    <input id="search" type="search" placeholder="Search apps, orgs, spaces, buildpacks...">
+    <select id="f-foundation"></select>
+    <select id="f-org"></select>
+    <select id="f-conf">
+      <option value="">All confidence</option>
+      <option value="CONFIRMED">Confirmed</option>
+      <option value="LIKELY">Likely</option>
+    </select>
+    <button id="dl-csv" type="button">Download CSV</button>
+    <span class="count" id="count"></span>
+  </section>
+  <section class="table-wrap">
+    <table id="tbl">
+      <thead><tr>
+        <th data-k="foundation">Foundation</th>
+        <th data-k="org">Org</th>
+        <th data-k="space">Space</th>
+        <th data-k="app">App</th>
+        <th data-k="buildpack">Buildpack</th>
+        <th data-k="confidence">Confidence</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </section>
+  <footer>Detected via Cloud Controller v3 buildpack inspection.
+    &ldquo;Confirmed&rdquo; means the app responded at <code>/cloudfoundryapplication</code>.</footer>
+</main>
+<script>
+const DATA = [
+  {
+    "foundation": "prod-dc1",
+    "org": "a-team",
+    "space": "dev",
+    "app": "order-service",
+    "buildpack": "java_buildpack_offline",
+    "confidence": "LIKELY"
+  },
+  {
+    "foundation": "prod-dc1",
+    "org": "a-team",
+    "space": "dev",
+    "app": "catalog-api",
+    "buildpack": "java_buildpack_offline",
+    "confidence": "LIKELY"
+  },
+  {
+    "foundation": "prod-dc1",
+    "org": "a-team",
+    "space": "dev",
+    "app": "customer-chat-api",
+    "buildpack": "java_buildpack_offline",
+    "confidence": "LIKELY"
+  },
+  {
+    "foundation": "prod-dc1",
+    "org": "a-team",
+    "space": "dev",
+    "app": "travel-portal",
+    "buildpack": "java_buildpack_offline",
+    "confidence": "LIKELY"
+  },
+  {
+    "foundation": "prod-dc2",
+    "org": "a-team",
+    "space": "test",
+    "app": "hr-portal-tst",
+    "buildpack": "java_buildpack_offline",
+    "confidence": "LIKELY"
+  },
+  {
+    "foundation": "prod-dc2",
+    "org": "demo",
+    "space": "bu-1",
+    "app": "billing-ai-service",
+    "buildpack": "java_buildpack_offline",
+    "confidence": "CONFIRMED"
+  },
+  {
+    "foundation": "prod-dc2",
+    "org": "demo",
+    "space": "bu-1",
+    "app": "billing-analytics-service",
+    "buildpack": "java_buildpack_offline",
+    "confidence": "CONFIRMED"
+  },
+  {
+    "foundation": "prod-dc2",
+    "org": "demo",
+    "space": "bu-1",
+    "app": "billing-event-processor",
+    "buildpack": "java_buildpack_offline",
+    "confidence": "CONFIRMED"
+  },
+  {
+    "foundation": "prod-dc2",
+    "org": "demo",
+    "space": "bu-1",
+    "app": "billing-report-service",
+    "buildpack": "java_buildpack_offline",
+    "confidence": "CONFIRMED"
+  }
+]
+;
+const GENERATED = "2026-05-28 14:56:10 EDT";
+(function(){
+  document.getElementById('generated').textContent = GENERATED;
+
+  var total = DATA.length;
+  var confirmed = DATA.filter(function(r){return r.confidence==='CONFIRMED';}).length;
+  var foundations = (new Set(DATA.map(function(r){return r.foundation;}))).size;
+  var orgs = (new Set(DATA.map(function(r){return r.foundation+'/'+r.org;}))).size;
+  var spaces = (new Set(DATA.map(function(r){return r.foundation+'/'+r.org+'/'+r.space;}))).size;
+  var showF = foundations > 1;
+
+  var cards = [['Spring apps',total],['Confirmed',confirmed],['Likely',total-confirmed],
+               ['Foundations',foundations],['Orgs',orgs],['Spaces',spaces]];
+  var cardWrap = document.getElementById('cards');
+  cards.forEach(function(c){
+    var d=document.createElement('div'); d.className='card';
+    var v=document.createElement('div'); v.className='card-val'; v.textContent=c[1];
+    var l=document.createElement('div'); l.className='card-lbl'; l.textContent=c[0];
+    d.appendChild(v); d.appendChild(l); cardWrap.appendChild(d);
+  });
+
+  function fillSelect(id, vals, allLabel){
+    var sel=document.getElementById(id);
+    var o=document.createElement('option'); o.value=''; o.textContent=allLabel; sel.appendChild(o);
+    Array.from(new Set(vals)).sort().forEach(function(v){
+      var op=document.createElement('option'); op.value=v; op.textContent=v; sel.appendChild(op);
+    });
+  }
+  fillSelect('f-foundation', DATA.map(function(r){return r.foundation;}), 'All foundations');
+  fillSelect('f-org', DATA.map(function(r){return r.org;}), 'All orgs');
+  if(!showF){
+    document.getElementById('f-foundation').style.display='none';
+    var th=document.querySelector('th[data-k=foundation]'); if(th) th.style.display='none';
+  }
+
+  var sortKey='app', sortDir=1, view=DATA.slice();
+
+  function sortView(){
+    view.sort(function(a,b){
+      var x=(a[sortKey]||'').toString().toLowerCase(), y=(b[sortKey]||'').toString().toLowerCase();
+      return x<y?-sortDir : x>y?sortDir : 0;
+    });
+  }
+  function badge(conf){
+    var s=document.createElement('span');
+    s.className='badge '+(conf==='CONFIRMED'?'b-conf':'b-likely');
+    s.textContent=conf; return s;
+  }
+  function render(){
+    var tb=document.getElementById('rows'); tb.textContent='';
+    view.forEach(function(r){
+      var tr=document.createElement('tr');
+      [['foundation',r.foundation],['org',r.org],['space',r.space],['app',r.app],['buildpack',r.buildpack]]
+        .forEach(function(cell){
+          if(cell[0]==='foundation' && !showF) return;
+          var td=document.createElement('td'); td.textContent=cell[1];
+          if(cell[0]==='app') td.className='app-cell';
+          tr.appendChild(td);
+        });
+      var tdc=document.createElement('td'); tdc.appendChild(badge(r.confidence)); tr.appendChild(tdc);
+      tb.appendChild(tr);
+    });
+    document.getElementById('count').textContent = view.length+' of '+total+' shown';
+  }
+  function applyFilters(){
+    var q=document.getElementById('search').value.trim().toLowerCase();
+    var ff=document.getElementById('f-foundation').value;
+    var fo=document.getElementById('f-org').value;
+    var fc=document.getElementById('f-conf').value;
+    view=DATA.filter(function(r){
+      if(ff && r.foundation!==ff) return false;
+      if(fo && r.org!==fo) return false;
+      if(fc && r.confidence!==fc) return false;
+      if(q){
+        var hay=(r.foundation+' '+r.org+' '+r.space+' '+r.app+' '+r.buildpack).toLowerCase();
+        if(hay.indexOf(q)===-1) return false;
+      }
+      return true;
+    });
+    sortView(); render();
+  }
+  document.getElementById('search').addEventListener('input', applyFilters);
+  ['f-foundation','f-org','f-conf'].forEach(function(id){
+    document.getElementById(id).addEventListener('change', applyFilters);
+  });
+  document.querySelectorAll('th[data-k]').forEach(function(th){
+    th.addEventListener('click', function(){
+      var k=th.getAttribute('data-k');
+      if(sortKey===k) sortDir=-sortDir; else { sortKey=k; sortDir=1; }
+      document.querySelectorAll('th[data-k]').forEach(function(t){t.classList.remove('asc','desc');});
+      th.classList.add(sortDir===1?'asc':'desc');
+      sortView(); render();
+    });
+  });
+  document.getElementById('dl-csv').addEventListener('click', function(){
+    var header=['foundation','org','space','app','buildpack','confidence'];
+    function esc(v){ v=(v==null?'':String(v)); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+    var lines=[header.join(',')].concat(view.map(function(r){
+      return header.map(function(h){return esc(r[h]);}).join(',');
+    }));
+    var blob=new Blob([lines.join('\n')],{type:'text/csv'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='spring-apps-filtered.csv'; document.body.appendChild(a); a.click(); a.remove();
+  });
+
+  applyFilters();
+})();
+</script>
+</body>
+</html>

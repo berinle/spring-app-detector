@@ -1,0 +1,10 @@
+foundation,org,space,app,buildpack,confidence
+"prod-dc1","a-team","dev","order-service","java_buildpack_offline","LIKELY"
+"prod-dc1","a-team","dev","catalog-api","java_buildpack_offline","LIKELY"
+"prod-dc1","a-team","dev","customer-chat-api","java_buildpack_offline","LIKELY"
+"prod-dc1","a-team","dev","travel-portal","java_buildpack_offline","LIKELY"
+"prod-dc2","a-team","test","hr-portal-tst","java_buildpack_offline","LIKELY"
+"prod-dc2","demo","bu-1","billing-ai-service","java_buildpack_offline","CONFIRMED"
+"prod-dc2","demo","bu-1","billing-analytics-service","java_buildpack_offline","CONFIRMED"
+"prod-dc2","demo","bu-1","billing-event-processor","java_buildpack_offline","CONFIRMED"
+"prod-dc2","demo","bu-1","billing-report-service","java_buildpack_offline","CONFIRMED"
