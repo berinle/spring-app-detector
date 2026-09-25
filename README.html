@@ -69,9 +69,10 @@ tr:last-child td{border-bottom:none}
 td code{white-space:nowrap}
 
 .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;}
-.b-conf{background:var(--green);color:#fff;}
-.b-likely{background:transparent;color:#b7791f;border:1px solid #e0b341;}
-@media (prefers-color-scheme:dark){.b-likely{color:#e0b341}}
+.b-boot{background:var(--green);color:#fff;}
+.b-spring{background:transparent;color:var(--green-d);border:1px solid var(--green);}
+.b-java{background:transparent;color:#b7791f;border:1px solid #e0b341;}
+@media (prefers-color-scheme:dark){.b-spring{color:var(--green)}.b-java{color:#e0b341}}
 
 .callout{border-left:4px solid var(--note-bd);background:var(--note-bg);
   padding:13px 16px;border-radius:0 9px 9px 0;margin:16px 0;}
@@ -126,23 +127,49 @@ hr{border:none;border-top:1px solid var(--line);margin:30px 0}
 
     <section id="detection">
       <h2>How detection works</h2>
+      <p>Every app staged by the <strong>Java buildpack</strong> is listed and classified by the strongest
+      evidence found. No evidence needs network access to the apps except <code>--probe</code>.</p>
       <table>
-        <thead><tr><th>Confidence</th><th>Meaning</th></tr></thead>
+        <thead><tr><th>Classification</th><th>Evidence (shown in the <code>Evidence</code> column)</th></tr></thead>
         <tbody>
           <tr>
-            <td><span class="badge b-likely">LIKELY</span><br><small>(default)</small></td>
-            <td>The app's <strong>detected buildpack</strong> (read from its current droplet) is the
-              <strong>Java buildpack</strong>. This is the practical ~95% filter for Spring on TAS — fast,
-              needs no network access to the apps, and covers apps with no route and stopped apps.</td>
+            <td><span class="badge b-boot">SPRING_BOOT</span></td>
+            <td><code>boot-launcher</code>: the droplet's start command runs
+              <code>org.springframework.boot.loader.…JarLauncher</code> / <code>WarLauncher</code> /
+              <code>PropertiesLauncher</code> (every Spring Boot executable jar). <code>java-cfenv</code>: the Java
+              buildpack added java-cfenv, which it only does for Spring Boot 3+. <code>actuator-probe</code>
+              (<code>--probe</code>): the app answered <code>/cloudfoundryapplication</code> with Spring Boot's own
+              security response.</td>
           </tr>
           <tr>
-            <td><span class="badge b-conf">CONFIRMED</span><br><small>(<code>--probe</code>)</small></td>
-            <td>In addition, the app's route responded at <strong><code>/cloudfoundryapplication</code></strong>
-              with <code>200/401/403</code>. The Java buildpack maps Spring Boot Actuator to this protected
-              path, so a response proves the app is Spring Boot from the inside out.</td>
+            <td><span class="badge b-spring">SPRING</span></td>
+            <td><code>spring-auto-reconfig</code>: the Java buildpack found <code>spring-core</code> in the app.
+              <code>scs:&lt;offering&gt;</code>: bound to a Spring Cloud Services config server, service registry or
+              circuit breaker. <code>env:&lt;NAME&gt;</code>: <code>SPRING_*</code> / <code>JBP_CONFIG_SPRING*</code>
+              env vars, or <code>-Dspring.</code> in <code>JAVA_OPTS</code> (names only; values are never read
+              into the report).</td>
+          </tr>
+          <tr>
+            <td><span class="badge b-spring">SPRING</span> / <span class="badge b-boot">SPRING_BOOT</span><br><small>(<code>--inspect-droplets</code>)</small></td>
+            <td><code>droplet:*</code>: for Java apps with no other evidence, the droplet's file list shows
+              <code>spring-boot</code> / <code>spring-webmvc</code> / <code>spring-webflux</code> /
+              <code>spring-core</code> jars or the buildpack's Spring support. This is what catches a plain Spring
+              MVC WAR on Tomcat, whose start command is only <code>catalina.sh run</code>.</td>
+          </tr>
+          <tr>
+            <td><span class="badge b-java">JAVA</span></td>
+            <td>Java buildpack, but none of the above. Plain Java, Tomcat WARs, Quarkus, Micronaut, vendor
+              products, or Spring apps that leave no trace.</td>
           </tr>
         </tbody>
       </table>
+      <p>Spring <em>libraries</em> alone are weak evidence: Play, for example, ships <code>spring-core</code>
+      for form binding. When another framework is detected (<code>framework:play</code>, <code>quarkus</code>,
+      <code>micronaut</code>, <code>dropwizard</code>, <code>helidon</code>), <code>spring-core</code> /
+      auto-reconfiguration alone leaves the app as <code>JAVA</code>, and the Evidence column shows both.</p>
+      <p>Only the buildpack that actually staged the app's <strong>current droplet</strong> counts, never the
+      buildpack the app merely requests. Docker-image apps, never-staged apps and apps whose droplet can't be
+      read are not classified; the summary counts each group separately.</p>
       <p>Platform/system apps are excluded <strong>by org name</strong> (default: <code>system</code>,
       <code>p-spring-cloud-services</code>, <code>p-dataflow</code>). Note that Spring Cloud Services
       components (config-server, eureka, …) <em>are</em> Spring Boot but are platform infrastructure, so they
@@ -173,12 +200,27 @@ hr{border:none;border-top:1px solid var(--line);margin:30px 0}
       <div class="callout">
         <div class="t">Note</div>
         <p><code>--probe</code> requires the machine running the script to have <strong>network access to the
-        app routes</strong> (<code>*.apps.&lt;domain&gt;</code>). Apps without a route, or Spring apps without
-        the Actuator dependency, stay <code>LIKELY</code> (they are not missed — just not upgraded to
-        <code>CONFIRMED</code>).</p>
+        app routes</strong> (<code>*.apps.&lt;domain&gt;</code>). It probes up to 3 public HTTP routes per
+        <strong>running</strong> app (internal, TCP and wildcard routes are skipped), over https and then http.
+        A bare status code never confirms an app, because auth gateways answer 401/403 and SPA catch-alls
+        answer 200 on every path. Only Spring Boot's own response body does. The <code>Probe</code> column
+        records the HTTP code seen (<code>000</code> = no response, <code>stopped</code>, <code>no-route</code>,
+        or <code>skipped</code> when the app was already proven Spring Boot).</p>
+        <p>The probe only finds Spring Boot apps with <strong>Actuator</strong>. On <strong>Spring Boot 4</strong>
+        the Cloud Foundry endpoint also needs <code>spring-boot-starter-cloudfoundry</code>; without it those
+        apps return 404.</p>
       </div>
 
-      <h3>3. Sweep many foundations from a config file</h3>
+      <h3>3. Look inside droplets for the rest</h3>
+<pre><code><span class="k">./detect-spring-apps.sh</span> --inspect-droplets</code></pre>
+      <div class="callout">
+        <div class="t">Note</div>
+        <p>For each Java app still without Spring evidence, downloads its droplet (typically 50–150 MB) and
+        lists its files without saving them. Needs the same admin / SpaceDeveloper access as the start command.
+        Only apps that would otherwise be <code>JAVA</code> are downloaded.</p>
+      </div>
+
+      <h3>4. Sweep many foundations from a config file</h3>
 <pre><code><span class="k">cp</span> foundations.example.json foundations.json   <span class="c"># edit endpoints + usernames</span>
 <span class="k">export</span> CF_PASSWORD_PROD_DC1='...'
 <span class="k">export</span> CF_PASSWORD_PROD_DC2='...'
@@ -186,7 +228,7 @@ hr{border:none;border-top:1px solid var(--line);margin:30px 0}
 <span class="k">./detect-spring-apps.sh</span> --config foundations.json --probe</code></pre>
       <p>Results from all foundations are merged into one table / CSV / HTML, tagged with the foundation name.</p>
 
-      <h3>4. Ad-hoc single foundation</h3>
+      <h3>5. Ad-hoc single foundation</h3>
 <pre><code>CF_PASSWORD='...' <span class="k">./detect-spring-apps.sh</span> --api https://api.sys.dc1.example.com -u svc-spring-audit</code></pre>
     </section>
 
@@ -210,9 +252,11 @@ hr{border:none;border-top:1px solid var(--line);margin:30px 0}
       <p>Each foundation is authenticated in an <strong>isolated <code>CF_HOME</code></strong>, so the script
       never touches your real <code>~/.cf/config.json</code> and a failure on one foundation doesn't abort the rest.</p>
       <div class="callout">
-        <div class="t">Use a read-only account</div>
-        <p>The script only issues <code>GET</code>s. A UAA user with <code>cloud_controller.read</code>
-        (e.g. an <code>admin_read_only</code> user, or an org/space <em>auditor</em>) is sufficient.</p>
+        <div class="t">Use a read-only account that can see droplet details</div>
+        <p>The script only issues <code>GET</code>s. The strongest signals (start command, env var names) are
+        only shown to <strong>admin</strong>, <strong>admin_read_only</strong> or <strong>SpaceDeveloper</strong>
+        users. An org/space <em>auditor</em> can run the script, but Cloud Controller hides the start command
+        from them, so Spring Boot apps fall back to <code>JAVA</code> and the script prints a warning.</p>
       </div>
     </section>
 
@@ -223,61 +267,78 @@ hr{border:none;border-top:1px solid var(--line);margin:30px 0}
 -u, --user NAME      Username for --api (password via CF_PASSWORD or prompt).
 --skip-ssl           Skip TLS validation for --api.
 
---probe              Confirm Spring Boot via /cloudfoundryapplication.
+--probe              Also probe running apps' routes at /cloudfoundryapplication.
+--inspect-droplets   Look inside the droplets of Java apps with no other
+                     Spring evidence (catches Spring WARs on Tomcat).
 --exclude-orgs LIST  Comma-separated org names to exclude
                      (default: system,p-spring-cloud-services,p-dataflow).
 --include-system     Exclude nothing.
---concurrency N      Parallel probe/route workers (default 8).
---probe-timeout S    Per-probe timeout, seconds (default 5).
+--concurrency N      Parallel API/probe workers (default 8).
+--probe-timeout S    Per-request probe timeout, seconds (default 10).
 
 --csv FILE / --no-csv      CSV output (default spring-apps-&lt;timestamp&gt;.csv).
 --html FILE / --no-html    HTML output (default spring-apps-&lt;timestamp&gt;.html).
 --no-table                 Suppress the terminal table.
 --debug                    Print per-foundation diagnostics (org/space/app
-                           counts, a sample current-droplet path, and the
-                           detected buildpack names) to stderr.
+                           counts, droplet fetch results and failures,
+                           detected buildpacks, classification counts and
+                           probe response-code tallies) to stderr.
 -h, --help                 Help.</code></pre>
       <p>Buildpack truth is read from each app's <strong>current droplet</strong>, fetched directly from the
       app's <code>current_droplet</code> link (<code>/v3/apps/:guid/droplets/current</code>). That's one API
-      call per app, run in parallel (<code>--concurrency</code>, default 8). On very large foundations raise
-      it, e.g. <code>--concurrency 16</code>.</p>
+      call per app, run in parallel (<code>--concurrency</code>, default 8), plus one env-var call per Java app
+      that has no other Spring evidence. On very large foundations raise it, e.g.
+      <code>--concurrency 16</code>.</p>
       <p>By default the terminal table, CSV, and HTML are <strong>all</strong> produced.</p>
     </section>
 
     <section id="columns">
       <h2>Output columns</h2>
       <p><code>Foundation</code> (only shown when more than one), <code>Org</code>, <code>Space</code>,
-      <code>App</code>, <code>Buildpack</code>, <code>Confidence</code>.</p>
-      <p>The HTML report adds summary cards (totals, confirmed vs likely, foundation/org/space counts), a live
-      search box, foundation/org/confidence filters, click-to-sort columns, and a “Download CSV” button that
-      exports the currently filtered view.</p>
+      <code>App</code>, <code>State</code>, <code>Buildpack</code>, <code>Classification</code>,
+      <code>Evidence</code>, and <code>Probe</code> (with <code>--probe</code>).</p>
+      <p>The HTML report adds summary cards (Spring Boot / Spring / Java counts, foundation/org/space counts),
+      a live search box, foundation/org/classification filters, click-to-sort columns, and a “Download CSV”
+      button that exports the currently filtered view.</p>
     </section>
 
     <section id="caveats">
       <h2>Caveats</h2>
       <ul>
-        <li><strong>LIKELY vs CONFIRMED.</strong> Without <code>--probe</code>, "Spring" means "Java
-          buildpack". A plain (non-Spring) Java app would show as LIKELY; use <code>--probe</code> to separate
-          true Spring Boot apps.</li>
-        <li><strong>Unstaged apps.</strong> Apps that have never been staged have no current droplet, so their
-          buildpack is unknown; they are skipped and counted in the summary.</li>
-        <li><strong>WAR / non-Boot Spring.</strong> Buildpack detection captures these (Java buildpack), but
-          <code>--probe</code> only confirms apps exposing the Actuator at the route root.</li>
-        <li><strong>Context-path routes.</strong> <code>--probe</code> hits
-          <code>https://&lt;route&gt;/cloudfoundryapplication</code>; apps served under a non-root context path
-          may not confirm even though they are Spring.</li>
+        <li><strong>JAVA is not "not Spring".</strong> It means no evidence was found. Spring Boot WARs
+          deployed to Tomcat and apps with custom start commands don't show the Boot launcher;
+          <code>--probe</code> or env vars may still catch them.</li>
+        <li><strong>Unclassified apps.</strong> Never-staged apps, Docker-image apps, and apps whose droplet
+          couldn't be read are counted separately in the summary. Use <code>--debug</code> to see why a droplet
+          fetch failed.</li>
+        <li><strong>Probe reach.</strong> <code>--probe</code> needs this host to reach the app domains. If most
+          probes return <code>000</code>, the script warns: check proxy (<code>HTTPS_PROXY</code>/<code>NO_PROXY</code>),
+          firewall and DNS.</li>
+        <li><strong>Stopped apps</strong> are listed (State <code>STOPPED</code>) but never probed. Leftover
+          blue-green copies (<code>*-venerable</code>) show up this way.</li>
       </ul>
     </section>
 
     <section id="troubleshooting">
       <h2>Troubleshooting</h2>
       <div class="callout warn">
-        <div class="t">“No Spring applications found” but you know there are Spring apps?</div>
-        <p>Re-run with <code>--debug</code>. The key line is <code>detected buildpacks: …</code> — it lists the
-        buildpack names the foundation actually reports. If you see Java buildpacks there but still get no
-        results, share that line. Also check <code>droplets resolved: N</code> is close to your app count; if
-        it's <code>0</code>, the script couldn't read the apps' current droplets (permissions or an
-        unstaged-only space).</p>
+        <div class="t">Spring apps showing as JAVA?</div>
+        <p>Check for the “start command hidden” warning: the account can't see droplet details, so use an
+        admin, admin_read_only or SpaceDeveloper user.</p>
+      </div>
+      <div class="callout warn">
+        <div class="t">No results, or fewer than expected?</div>
+        <p>Re-run with <code>--debug</code>. <code>detected buildpacks: …</code> lists the buildpack names the
+        foundation actually reports, and <code>droplet fetch: ok=… no_droplet=… fetch_failed=…</code> shows
+        whether droplets could be read (the first few failures are printed with the Cloud Controller's
+        reason).</p>
+      </div>
+      <div class="callout warn">
+        <div class="t">Few actuator-probe confirmations?</div>
+        <p><code>probe response codes: …</code> in <code>--debug</code> tells you why: mostly <code>000</code>
+        means no network path to the apps, <code>404</code> means no Actuator (or Spring Boot 4 without
+        <code>spring-boot-starter-cloudfoundry</code>), <code>302</code> means an SSO layer or route service is
+        in front.</p>
       </div>
     </section>
   </main>
